@@ -1,33 +1,39 @@
 (function() {
-  var ContentPortal, listener;
+  var ContentPortal, _, _$, glogger;
 
-  window.ContentPortal = ContentPortal = (function() {
+  _ = require("underscore");
+
+  glogger = require("./../../glog/glog.js");
+
+  _$ = require("./../../morslamina-utility/utility.js");
+
+  module.exports = ContentPortal = (function() {
     function ContentPortal(origin) {
       this.origin = origin;
       window.addEventListener("message", (function(_this) {
         return function(msg) {
-          var glog, prms;
-          glog = _.glog("ContentPortal").open("Content Portal Got Message");
-          glog.add(msg);
-          if (msg.data.src === "client") {
-            glog.add("From client");
-            if (msg.data.origin === _this.origin) {
-              glog.add("	 ...originating with Client");
-              return _this.toEXT(msg.data).then(function(data) {
-                var payload;
-                payload = msg.data;
-                delete payload.fn;
-                delete payload.args;
-                payload.response = data;
+          var glog, payload, prms;
+          glog = glogger(["ContentPortal", "Messages Recieved"]);
+          payload = JSON.parse(JSON.stringify(msg.data));
+          if (payload.src === "client") {
+            glog = glog.get("From Client");
+            if (payload.request.origin === _this.origin) {
+              glog = glog.open("Originating At Client (Use SendMessage)");
+              glog.add(payload);
+              return _this.toEXT(payload).then(function(data) {
+                payload = data;
+                payload.src = "content";
                 return _this.toClient(payload);
               });
             } else {
-              glog.add("	 ...its a reply to the background");
+              glog = glog.open("Reply to elsewhere (Use Promise)");
+              glog.add(payload);
               prms = _.findWhere(_this.promises, {
-                id: msg.data.id
+                id: payload.response.id
               });
+              glog.add(prms);
               _this.promises = _.without(_this.promises, prms);
-              return prms.resolve(msg.data.response);
+              return prms.resolve(payload);
             }
           }
         };
@@ -35,12 +41,12 @@
       chrome.runtime.onMessage.addListener((function(_this) {
         return function(request, sender, sendResponse) {
           var glog;
-          glog = _.glog("ContentPortal").open("Content got message from background");
+          glog = glogger(["ContentPortal", "Messages Recieved"]).open("From Backgrund");
           glog.add(request);
-          _this.toClient(request).then(function(data) {
+          _this.toClient(request).then(function(payload) {
             glog.add("Sending Response");
-            glog.add(data);
-            return sendResponse(data);
+            glog.add(payload);
+            return sendResponse(payload);
           });
           return true;
         };
@@ -53,7 +59,7 @@
 
     ContentPortal.prototype.toEXT = function(payload) {
       var glog;
-      glog = _.glog("ContentPortal").open("sending a message to EXT from ContentPortal");
+      glog = glogger("ContentPortal").open("sending a message to EXT from ContentPortal");
       glog.add(payload);
       return new Promise((function(_this) {
         return function(resolve, reject) {
@@ -72,8 +78,8 @@
 
     ContentPortal.prototype.toClient = function(payload) {
       var glog, outsideReject, outsideResolve, prms;
-      glog = _.glog("ContentPortal").open("sending a message to client from content");
-      if (payload.origin === this.origin) {
+      glog = glogger("ContentPortal").open("sending a message to client from content");
+      if (payload.request.origin === this.origin) {
         payload.src = "content";
         return window.postMessage(payload, "*");
       } else {
@@ -83,7 +89,9 @@
           return function(resolve, reject) {
             outsideResolve = resolve;
             outsideReject = reject;
-            payload.id = _this.counter;
+            payload.response = {
+              id: _this.counter
+            };
             payload.src = "content";
             glog.add(payload);
             return window.postMessage(payload, "*");
@@ -103,27 +111,5 @@
     return ContentPortal;
 
   })();
-
-  listener = (function(_this) {
-    return function(msg) {
-      var glog;
-      glog = _.glog("ContentPortal").open("ClientPortal Setup Listener Caught Message");
-      if (msg.data.src === "client" && msg.data.register) {
-        glog.add("Creating/Registering ContentPortal with EXT");
-        window.portal = new ContentPortal(msg.data.origin);
-        portal.toEXT(msg.data).then(function(data) {
-          var payload;
-          payload = msg.data;
-          delete payload.fn;
-          delete payload.args;
-          payload.response = data;
-          return portal.toClient(payload);
-        });
-        return window.removeEventListener("message", listener);
-      }
-    };
-  })(this);
-
-  window.addEventListener("message", listener);
 
 }).call(this);

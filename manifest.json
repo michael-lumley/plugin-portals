@@ -1,0 +1,25 @@
+{
+  "manifest_version": 2,
+
+  "name": "plugin-portals Test Extension",
+  "description": "Test Interface for plugin-portals",
+  "version": "1.0.0",
+
+  "content_security_policy": "script-src 'self' 'unsafe-eval'; object-src 'self'",
+
+  "background": {
+    "page": "test/background.html"
+  },
+  "content_scripts": [{
+    "matches": ["file:///home/michael/Dropbox/dev/plugin-portals/test/test.html"],
+    "js": ["build/plugin-portals.js"]
+  }, {
+    "matches": ["file:///home/michael/Dropbox/dev/plugin-portals/test/thirdparty.html"],
+    "js": ["build/plugin-portals.js", "test/thirdparty.js"]
+  }],
+	"permissions": [
+    "*://*/*",
+    "activeTab",
+    "https://ajax.googleapis.com/"
+  ]
+}

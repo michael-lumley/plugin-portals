@@ -1,0 +1,14 @@
+{
+  "name": "plugin-portals",
+  "version": "1.0.0",
+  "author": "Michael Lumley",
+  "license": "MIT",
+  "dependencies": {
+    "underscore": "^1.8.3"
+  },
+  "devDependencies": {
+    "browserify": "^13.1.0",
+    "gulp": "^3.9.1",
+    "vinyl-source-stream": "^1.1.0"
+  }
+}
